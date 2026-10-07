@@ -1,3 +1,13 @@
+function corsHeaders(request) {
+  const origin = request.headers.get("Origin") || "*";
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Vary": "Origin"
+  };
+}
+
 const MODEL = "gpt-5.6-luna";
 
 const questionsSchema = {
@@ -90,10 +100,13 @@ const baseInstructions = `
 - JSONのみを返す。
 `;
 
-function json(data, status = 200) {
+function json(data, status = 200, request = null) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8" }
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      ...(request ? corsHeaders(request) : {})
+    }
   });
 }
 
@@ -161,7 +174,7 @@ async function questions(request, env) {
   const prefecture = String(b.prefecture || "").trim();
   const place = String(b.place || "").trim();
   const images = Array.isArray(b.images) ? b.images.slice(0, 5) : [];
-  if (!job) return json({ error: "案件内容を入力してください。" }, 400);
+  if (!job) return json({ error: "案件内容を入力してください。" }, 400, request);
 
   try {
     const data = await callOpenAI(env, {
@@ -171,9 +184,9 @@ async function questions(request, env) {
       text: { format: { type: "json_schema", name: "job_questions", strict: true, schema: questionsSchema } },
       store: false
     });
-    return json(JSON.parse(outputText(data)));
+    return json(JSON.parse(outputText(data)), 200, request);
   } catch (e) {
-    return json(safeError(e, "案件理解に失敗しました。"), 500);
+    return json(safeError(e, "案件理解に失敗しました。"), 500, request);
   }
 }
 
@@ -184,7 +197,7 @@ async function analyze(request, env) {
   const place = String(b.place || "").trim();
   const answers = Array.isArray(b.answers) ? b.answers : [];
   const images = Array.isArray(b.images) ? b.images.slice(0, 5) : [];
-  if (!job) return json({ error: "案件内容を入力してください。" }, 400);
+  if (!job) return json({ error: "案件内容を入力してください。" }, 400, request);
 
   try {
     const data = await callOpenAI(env, {
@@ -195,9 +208,9 @@ async function analyze(request, env) {
       text: { format: { type: "json_schema", name: "sales_navi_analysis", strict: true, schema: analysisSchema } },
       store: false
     });
-    return json(JSON.parse(outputText(data)));
+    return json(JSON.parse(outputText(data)), 200, request);
   } catch (e) {
-    return json(safeError(e, "分析に失敗しました。"), 500);
+    return json(safeError(e, "分析に失敗しました。"), 500, request);
   }
 }
 
@@ -207,7 +220,7 @@ export default {
     if (url.pathname === "/api/questions" && request.method === "POST") return questions(request, env);
     if (url.pathname === "/api/analyze" && request.method === "POST") return analyze(request, env);
     if (url.pathname === "/api/health") {
-      return json({ ok: true, openaiKeyConfigured: Boolean(env.OPENAI_API_KEY), model: env.OPENAI_MODEL || MODEL });
+      return json({ ok: true, openaiKeyConfigured: Boolean(env.OPENAI_API_KEY), model: env.OPENAI_MODEL || MODEL }, 200, request);
     }
     return env.ASSETS.fetch(request);
   }

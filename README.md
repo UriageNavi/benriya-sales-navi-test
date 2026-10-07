@@ -1,13 +1,16 @@
-# 便利屋 売上ナビ（Cloudflare Workers版）
+# 便利屋 売上ナビ — Cloudflare API Worker
 
-Netlify Functionsを使わず、Cloudflare Workers + Static AssetsでフロントエンドとAI APIを同一Workerにまとめた構成です。
-OpenAI APIキーはGitHubに置かず、Cloudflare WorkerのSecret `OPENAI_API_KEY` に登録してください。
+このリポジトリのWorkerはAI API専用です。現在のNetlifyフロント画面は残し、AI処理だけCloudflare Workersへ移します。
 
-## GitHub → Cloudflare
-1. このリポジトリに `index.html` / `worker.js` / `wrangler.jsonc` / `.assetsignore` を置く。
-2. Cloudflare Dashboard → Workers & Pages → Create application → Import a repository からGitHubリポジトリを接続。
-3. Worker名は `benriya-sales-navi-test` にする。
-4. RuntimeのVariables & Secretsで `OPENAI_API_KEY` をSecretとして登録。
-5. `main` ブランチへpushすると自動デプロイ。
+## GitHub
+`worker.js` と `wrangler.jsonc` をリポジトリのルートに置いてCloudflare Workers Buildsからデプロイします。
 
-OpenAIモデルは `gpt-5.6-luna` を既定値にしています。必要ならCloudflare側の `OPENAI_MODEL` で変更できます。
+## Secret
+Cloudflare WorkerのRuntime Variables & Secretsに `OPENAI_API_KEY` をSecretとして登録してください。GitHubにはAPIキーを置きません。
+
+## Endpoints
+- `GET /api/health`
+- `POST /api/questions`
+- `POST /api/analyze`
+
+CORS対応済みです。デプロイ後に発行されたWorker URLを現在のNetlifyフロントのAPI送信先に設定します。
